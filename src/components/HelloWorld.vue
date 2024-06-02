@@ -4,21 +4,17 @@ import {ref} from "vue";
 export default {
   data() {
     return {
-      items: [{ id: 0, title: 'Item 1', list: 0, },{ id: 1, title: 'Item 2', list: 0, }],
+      items: [{ id: 0, title: 'Item 1', list: 0, order: 0 },{ id: 1, title: 'Item 2', list: 0, order: 1 }],
       columns: [],
       order:null,
       currentDraggableElemId:null
     }
   },
-  computed: {
-    // getList(listId){
-    //   return this.items.filter((item) => item.list === listId)
-    // }
-  },
-
   methods: {
     getList(listId){
-      return this.items.filter((item) => item.list === listId)
+      return this.items
+          .filter((item) => item.list === listId)
+          .sort((a, b) => a.order - b.order)
     },
     getColumns(index){
       return this.columns.filter((column) => column.list === index)
@@ -26,38 +22,32 @@ export default {
     startDrag(evt, item , indexStartElem) {
       evt.dataTransfer.dropEffect = 'move'
       evt.dataTransfer.effectAllowed = 'move'
-      evt.dataTransfer.setData('itemID', item.id)
-      console.log(indexStartElem)
       this.currentDraggableElemId = item.id
     },
-    onDrop(evt, list) {
-      this.$refs.placeholderElem.forEach((el)=>{
-        el.classList.remove("placeholder-elem-active")
-        el.style.height = 0
-      })
-      const itemID = evt.dataTransfer.getData('itemID')
-      const item = this.items.find((item) => item.id == itemID)
-      item.list = list
-
-      console.log("1:",this.items[this.currentDraggableElemId])
-      console.log("2:",this.items[this.order])
-      console.log("3:",this.items)
-
-      let bank = this.items[this.currentDraggableElemId]
-      this.items[this.currentDraggableElemId] =  this.items[this.order]
-      this.items[this.order] = bank
-
-      let bankId = this.items[this.currentDraggableElemId].id
-      this.items[this.currentDraggableElemId].id =  this.items[this.order].id
-      this.items[this.order].id = bankId
-
+    onDrop(list) {
+      if (this.items[this.currentDraggableElemId].list !== this.items[this.order].list){
+        const item = this.items.find((item) => item.id === this.currentDraggableElemId)
+        item.order = this.items[this.order].order
+        this.items.forEach((elem)=>{
+          if(elem.list === list && elem.order >= item.order){
+            elem.order++
+          }
+        })
+        item.list = list
+      }else{
+        this.swapElems()
+      }
+      console.log(this.items)
     },
-    onDragEnter(elem , placeholder , item){
+    swapElems(){
+      let bankOrder = this.items[this.currentDraggableElemId].order
+      this.items[this.currentDraggableElemId].order =  this.items[this.order].order
+      this.items[this.order].order = bankOrder
+    },
+
+    onDragEnter(item){
       console.log('enter-id: '+item+'  draggable-id: '+ this.currentDraggableElemId)
       this.order =item
-    },
-    onDragLeave(elem,placeholder){
-
     },
     showObj(){
       console.log(this.items);
@@ -75,7 +65,9 @@ export default {
         id: this.items.length,
         title: "item-"+(this.items.length+1),
         list: index,
+        order: this.getList(index).length
       })
+      console.log(this.items)
     },
   },
 }
@@ -101,8 +93,7 @@ export default {
              :key="item.title"
              draggable="true"
              @dragstart="startDrag($event, item ,this.$refs.dragEl.indexOf(item))"
-             @dragenter="onDragEnter(this.$refs.dragEl[item.id] , this.$refs.placeholderElem[item.id] , item.id)"
-             @dragleave="onDragLeave(this.$refs.dragEl[item.id] , this.$refs.placeholderElem[item.id])"
+             @dragenter="onDragEnter(item.id)"
              ref="dragEl">
           <div class="placeholder-elem " ref="placeholderElem"></div>
           <div class="content">
